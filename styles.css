@@ -93,52 +93,6 @@ h1 {
     25%, 75% { opacity: 0.5; }
 }
 
-#power-meter-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 15px;
-    padding: 10px;
-    background: #f0f0f0;
-    border-radius: 10px;
-}
-
-#power-slider {
-    flex: 1;
-    max-width: 300px;
-    height: 8px;
-    -webkit-appearance: none;
-    appearance: none;
-    background: #ddd;
-    border-radius: 5px;
-    outline: none;
-}
-
-#power-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    background: #667eea;
-    cursor: pointer;
-    border-radius: 50%;
-}
-
-#power-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    background: #667eea;
-    cursor: pointer;
-    border-radius: 50%;
-    border: none;
-}
-
-#power-value {
-    font-weight: bold;
-    min-width: 45px;
-}
-
 #gameCanvas {
     display: block;
     width: 100%;

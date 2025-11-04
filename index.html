@@ -34,12 +34,6 @@
             </div>
         </div>
 
-        <div id="power-meter-container">
-            <label>Power:</label>
-            <input type="range" id="power-slider" min="1" max="100" value="75">
-            <span id="power-value">75%</span>
-        </div>
-
         <canvas id="gameCanvas"></canvas>
 
         <div id="controls">
@@ -50,14 +44,17 @@
         <div id="help-modal" class="modal" style="display: none;">
             <div class="modal-content">
                 <span class="close">&times;</span>
-                <h2>How to Play Carrom</h2>
+                <h2>How to Play Carrom Pool</h2>
                 <ul>
-                    <li>Drag the striker to aim your shot</li>
-                    <li>Adjust power using the slider</li>
-                    <li>Pocket your color pieces (white or black)</li>
-                    <li>Pocket the red queen and cover it with your piece</li>
-                    <li>First to pocket all their pieces wins!</li>
+                    <li>Step 1: Drag striker left/right to position it on baseline</li>
+                    <li>Step 2: Tap anywhere to start aiming - cue stick appears</li>
+                    <li>Step 3: Drag in any direction to aim</li>
+                    <li>Step 4: Drag back further for more power - power bar shows strength</li>
+                    <li>Step 5: Release to shoot!</li>
+                    <li>Goal: Pocket all your color pieces (white)</li>
+                    <li>Bonus: Pocket red queen and cover it with your piece for +50 points</li>
                     <li>Foul: Pocketing opponent's piece or striker</li>
+                    <li>You get another turn when you pocket your piece</li>
                 </ul>
                 <button id="close-help">Got it!</button>
             </div>
