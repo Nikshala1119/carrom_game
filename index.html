@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#8B4513">
+    <meta name="description" content="Play Carrom Pool - A classic board game">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Carrom">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <title>Carrom Pool Game</title>
+</head>
+<body>
+    <div id="game-container">
+        <div id="header">
+            <h1>🎯 Carrom Pool</h1>
+            <button id="install-btn" style="display: none;">Install App</button>
+        </div>
+
+        <div id="score-board">
+            <div class="player-score">
+                <h3>You</h3>
+                <div id="player-score">0</div>
+            </div>
+            <div class="turn-indicator">
+                <div id="turn-text">Your Turn</div>
+                <div id="foul-text" style="display: none;">Foul! Skip Turn</div>
+            </div>
+            <div class="player-score">
+                <h3>Computer</h3>
+                <div id="computer-score">0</div>
+            </div>
+        </div>
+
+        <div id="power-meter-container">
+            <label>Power:</label>
+            <input type="range" id="power-slider" min="1" max="100" value="50">
+            <span id="power-value">50%</span>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="controls">
+            <button id="reset-btn">New Game</button>
+            <button id="help-btn">How to Play</button>
+        </div>
+
+        <div id="help-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>How to Play Carrom</h2>
+                <ul>
+                    <li>Drag the striker to aim your shot</li>
+                    <li>Adjust power using the slider</li>
+                    <li>Pocket your color pieces (white or black)</li>
+                    <li>Pocket the red queen and cover it with your piece</li>
+                    <li>First to pocket all their pieces wins!</li>
+                    <li>Foul: Pocketing opponent's piece or striker</li>
+                </ul>
+                <button id="close-help">Got it!</button>
+            </div>
+        </div>
+
+        <div id="game-over-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2 id="winner-text"></h2>
+                <p id="final-score"></p>
+                <button id="play-again-btn">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
