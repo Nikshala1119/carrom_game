@@ -409,24 +409,17 @@ class CarromGame {
         // Check pocketed pieces
         const pocketedThisTurn = this.pieces.filter(p => p.justPocketed && !p.processed);
 
-        console.log(`Processing turn for ${this.currentPlayer}, pocketed pieces:`, pocketedThisTurn.length);
-
         pocketedThisTurn.forEach(piece => {
             piece.processed = true;
-
-            console.log(`Pocketed piece type: ${piece.type}, current player: ${this.currentPlayer}, player color: ${this.getPlayerColor(this.currentPlayer)}`);
 
             if (piece.type === 'queen') {
                 this.queenPocketed = true;
                 scored = true;
-                console.log('Queen pocketed!');
             } else if (piece.type === this.getPlayerColor(this.currentPlayer)) {
                 if (this.currentPlayer === 'player') {
                     this.playerScore += 10;
-                    console.log(`Player scored! New score: ${this.playerScore}`);
                 } else {
                     this.computerScore += 10;
-                    console.log(`Computer scored! New score: ${this.computerScore}`);
                 }
                 scored = true;
                 this.validHit = true;
@@ -439,24 +432,20 @@ class CarromGame {
                     } else {
                         this.computerScore += 50;
                     }
-                    console.log('Queen covered! Bonus points awarded');
                 }
             } else if (piece.type !== 'queen') {
                 // Pocketed opponent's piece - foul
                 this.foul = true;
-                console.log('Foul! Pocketed opponent piece');
             }
         });
 
         // Check if striker was pocketed - foul
         if (this.striker.pocketed) {
             this.foul = true;
-            console.log('Foul! Striker pocketed');
             this.resetStriker();
         }
 
         // Update UI
-        console.log(`Updating scores - Player: ${this.playerScore}, Computer: ${this.computerScore}`);
         this.updateScore();
 
         // Check for game over
@@ -536,19 +525,8 @@ class CarromGame {
     }
 
     updateScore() {
-        const playerScoreEl = document.getElementById('player-score');
-        const computerScoreEl = document.getElementById('computer-score');
-
-        console.log('updateScore called - Elements found:', playerScoreEl !== null, computerScoreEl !== null);
-        console.log('Setting scores to:', this.playerScore, this.computerScore);
-
-        if (playerScoreEl) playerScoreEl.textContent = this.playerScore;
-        if (computerScoreEl) computerScoreEl.textContent = this.computerScore;
-
-        console.log('DOM values after update:',
-            playerScoreEl ? playerScoreEl.textContent : 'null',
-            computerScoreEl ? computerScoreEl.textContent : 'null'
-        );
+        document.getElementById('player-score').textContent = this.playerScore;
+        document.getElementById('computer-score').textContent = this.computerScore;
     }
 
     updateTurnIndicator() {
