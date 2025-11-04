@@ -382,9 +382,15 @@ class CarromGame {
 
     allPiecesStopped() {
         const threshold = 0.1;
-        return this.pieces.every(p => !p.pocketed &&
-            Math.abs(p.vx) < threshold && Math.abs(p.vy) < threshold) &&
-            Math.abs(this.striker.vx) < threshold && Math.abs(this.striker.vy) < threshold;
+        // Check that all non-pocketed pieces have stopped
+        const unpocketedPiecesStopped = this.pieces
+            .filter(p => !p.pocketed)
+            .every(p => Math.abs(p.vx) < threshold && Math.abs(p.vy) < threshold);
+
+        const strikerStopped = this.striker.pocketed ||
+            (Math.abs(this.striker.vx) < threshold && Math.abs(this.striker.vy) < threshold);
+
+        return unpocketedPiecesStopped && strikerStopped;
     }
 
     checkTurnEnd() {
