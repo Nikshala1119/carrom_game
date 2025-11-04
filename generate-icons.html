@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Carrom Icons</title>
+</head>
+<body>
+    <h2>Icon Generator - Right-click and save images</h2>
+    <div>
+        <p>192x192 Icon:</p>
+        <canvas id="icon192" width="192" height="192"></canvas>
+    </div>
+    <div>
+        <p>512x512 Icon:</p>
+        <canvas id="icon512" width="512" height="512"></canvas>
+    </div>
+
+    <script>
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+
+            // Background
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 0, size, size);
+
+            // Board
+            ctx.fillStyle = '#F5DEB3';
+            const boardSize = size * 0.8;
+            const offset = size * 0.1;
+            ctx.fillRect(offset, offset, boardSize, boardSize);
+
+            // Center circle
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = size * 0.02;
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, size * 0.2, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Queen piece (red)
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, size * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#8B0000';
+            ctx.lineWidth = size * 0.01;
+            ctx.stroke();
+
+            // White pieces
+            ctx.fillStyle = 'white';
+            const pieceRadius = size * 0.06;
+            const spacing = size * 0.15;
+
+            // Top piece
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2 - spacing, pieceRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = size * 0.008;
+            ctx.stroke();
+
+            // Bottom piece
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2 + spacing, pieceRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Black pieces
+            ctx.fillStyle = 'black';
+
+            // Left piece
+            ctx.beginPath();
+            ctx.arc(size / 2 - spacing, size / 2, pieceRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Right piece
+            ctx.beginPath();
+            ctx.arc(size / 2 + spacing, size / 2, pieceRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Border
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = size * 0.03;
+            ctx.strokeRect(offset, offset, boardSize, boardSize);
+        }
+
+        drawIcon(document.getElementById('icon192'), 192);
+        drawIcon(document.getElementById('icon512'), 512);
+
+        // Auto-download icons
+        setTimeout(() => {
+            const canvas192 = document.getElementById('icon192');
+            const canvas512 = document.getElementById('icon512');
+
+            canvas192.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'icon-192.png';
+                a.click();
+            });
+
+            setTimeout(() => {
+                canvas512.toBlob(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'icon-512.png';
+                    a.click();
+                });
+            }, 1000);
+        }, 500);
+    </script>
+</body>
+</html>
