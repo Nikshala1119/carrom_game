@@ -4,22 +4,37 @@ A Progressive Web App (PWA) implementation of the classic Carrom board game. Pla
 
 ## Features
 
-- ✨ Single player vs Computer AI
-- 📱 Installable on Android and iOS devices
-- 🎮 Touch controls optimized for mobile
-- 🎨 Beautiful, responsive design
-- ⚡ Works offline after first load
-- 🎯 Realistic physics simulation
-- 🏆 Score tracking and game rules
+### Core Gameplay (Carrom Pool Style)
+- 🎯 **Authentic Carrom Pool Experience**: Cue stick aiming with drag-back power mechanism
+- 🎮 **Two-Phase Controls**: Striker placement + aiming/shooting phases
+- 🎪 **Visual Cue Stick**: Rotating cue with blue tip and trajectory line
+- 💪 **Dynamic Power System**: Live power bar showing shot strength
+- ⚡ **Proper Piece Setup**: 9 white, 9 black, 1 red queen pieces
 
-## How to Play
+### Visual & Audio Effects
+- ✨ **Particle Effects**: Shot trails and collision sparks
+- 💫 **Pocket Animations**: Golden ring effects when pieces are pocketed
+- 🔊 **Sound Effects**: Strike, collision, and pocket sounds
+- 🎨 **Beautiful Graphics**: Polished board with baseline indicators
 
-1. **Aim**: Drag on the striker to aim your shot
-2. **Adjust Power**: Use the power slider to control shot strength
-3. **Release**: Release to shoot
-4. **Score**: Pocket your color pieces (white or black)
-5. **Queen**: Pocket the red queen and cover it with your piece for bonus points
-6. **Win**: First player to pocket all their pieces wins!
+### Game Features
+- 🤖 **Smart AI Opponent**: Challenging computer player
+- 📊 **Score Tracking**: 10 points per piece, 50 bonus for queen
+- 🏆 **Proper Rules**: Fouls, turn continuation, queen covering
+- 📱 **PWA Support**: Installable on Android and iOS devices
+- 🌐 **Offline Mode**: Works offline after first load
+- 📐 **Realistic Physics**: Accurate collision detection and friction
+
+## How to Play (Carrom Pool Style)
+
+1. **Position Striker**: Drag the striker left/right along the baseline to position it
+2. **Start Aiming**: Tap anywhere to lock striker position - cue stick appears
+3. **Aim Direction**: Drag in any direction to rotate the cue stick and aim
+4. **Set Power**: Drag back further from striker for more power - power bar shows strength
+5. **Shoot**: Release to take the shot!
+6. **Score**: Pocket your color pieces (white) to earn 10 points each
+7. **Queen Bonus**: Pocket the red queen and then pocket one of your pieces to earn 50 bonus points
+8. **Win**: First player to pocket all their pieces wins!
 
 ### Rules
 
@@ -142,17 +157,20 @@ carrom_game/
 
 ## Game Controls
 
-### Desktop
-- **Mouse**: Click and drag on striker to aim
-- **Power Slider**: Adjust shot power
-- **New Game**: Reset the game
-- **Help**: View instructions
+### Desktop & Mobile (Unified Carrom Pool Controls)
 
-### Mobile
-- **Touch**: Tap and drag on striker to aim
-- **Power Slider**: Adjust shot power
-- **New Game**: Reset the game
-- **Help**: View instructions
+**Phase 1 - Striker Placement:**
+- **Drag Horizontally**: Move striker left/right along baseline
+- **Tap/Click Anywhere**: Confirm position and start aiming
+
+**Phase 2 - Aiming & Shooting:**
+- **Drag in Any Direction**: Rotate cue stick to aim
+- **Drag Distance**: Further drag = more power (power bar shows live)
+- **Release**: Take the shot
+
+**Additional Controls:**
+- **New Game Button**: Reset the game
+- **Help Button**: View detailed instructions
 
 ## Technical Details
 

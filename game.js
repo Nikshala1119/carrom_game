@@ -1,4 +1,4 @@
-// Carrom Pool Game - Main Game Logic
+// Carrom Pool Game - Matching Real Carrom Pool Experience
 class CarromGame {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
@@ -9,7 +9,7 @@ class CarromGame {
         window.addEventListener('resize', () => this.setupCanvas());
 
         // Game state
-        this.gameState = 'playing'; // 'playing', 'gameover'
+        this.gameState = 'aiming'; // 'aiming', 'striker-placement', 'shooting', 'waiting', 'gameover'
         this.currentPlayer = 'player'; // 'player' or 'computer'
         this.playerScore = 0;
         this.computerScore = 0;
@@ -18,9 +18,10 @@ class CarromGame {
         this.queenPocketed = false;
         this.queenCovered = { player: false, computer: false };
         this.foul = false;
+        this.validHit = false;
 
         // Physics constants
-        this.friction = 0.98;
+        this.friction = 0.97;
         this.restitution = 0.8;
 
         // Board dimensions
@@ -33,14 +34,53 @@ class CarromGame {
         this.striker = null;
         this.initializePieces();
 
-        // Input handling
-        this.isDragging = false;
-        this.dragStart = { x: 0, y: 0 };
-        this.aimLine = { x: 0, y: 0 };
-        this.power = 50;
+        // Aiming system (Carrom Pool style)
+        this.aimAngle = -Math.PI / 2; // Start aiming upward
+        this.power = 0;
+        this.maxPower = 100;
+        this.isDraggingPower = false;
+        this.powerStartY = 0;
+        this.isPlacingStriker = true;
+        this.strikerBaselineY = null;
+
+        // Visual effects
+        this.particles = [];
+        this.pocketAnimations = [];
+
+        // Sound system
+        this.sounds = {
+            strike: this.createSound(300, 0.1),
+            collision: this.createSound(200, 0.05),
+            pocket: this.createSound(400, 0.2)
+        };
 
         this.setupEventListeners();
         this.gameLoop();
+    }
+
+    createSound(frequency, duration) {
+        // Simple sound effect using Web Audio API
+        return () => {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.value = frequency;
+                oscillator.type = 'sine';
+
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration);
+            } catch (e) {
+                // Silently fail if audio not supported
+            }
+        };
     }
 
     setupCanvas() {
@@ -64,33 +104,33 @@ class CarromGame {
             y: this.canvas.height / 2
         };
         const radius = this.boardSize * 0.025;
+        const spacing = radius * 2.1;
 
-        // Create pieces in diamond formation
-        const spacing = radius * 2.2;
+        // Create 9 white, 9 black pieces, 1 queen in diamond formation
+        // Center: Queen
+        this.pieces.push(new Piece(center.x, center.y, radius, '#DC143C', 'queen'));
 
-        // Center piece (Queen - Red)
-        this.pieces.push(new Piece(center.x, center.y, radius, 'red', 'queen'));
-
-        // Ring 1 - 4 pieces alternating
-        const ring1Positions = [
+        // Ring 1 - 4 pieces
+        const colors1 = ['white', 'black', 'white', 'black'];
+        const ring1 = [
             { x: 0, y: -spacing },
             { x: spacing, y: 0 },
             { x: 0, y: spacing },
             { x: -spacing, y: 0 }
         ];
-        ring1Positions.forEach((pos, i) => {
-            const color = i % 2 === 0 ? 'white' : 'black';
+        ring1.forEach((pos, i) => {
             this.pieces.push(new Piece(
                 center.x + pos.x,
                 center.y + pos.y,
                 radius,
-                color,
-                color
+                colors1[i],
+                colors1[i]
             ));
         });
 
         // Ring 2 - 8 pieces
-        const ring2Positions = [
+        const colors2 = ['black', 'white', 'black', 'white', 'black', 'white', 'black', 'white'];
+        const ring2 = [
             { x: 0, y: -spacing * 2 },
             { x: spacing, y: -spacing },
             { x: spacing * 2, y: 0 },
@@ -100,19 +140,19 @@ class CarromGame {
             { x: -spacing * 2, y: 0 },
             { x: -spacing, y: -spacing }
         ];
-        ring2Positions.forEach((pos, i) => {
-            const color = i % 2 === 0 ? 'black' : 'white';
+        ring2.forEach((pos, i) => {
             this.pieces.push(new Piece(
                 center.x + pos.x,
                 center.y + pos.y,
                 radius,
-                color,
-                color
+                colors2[i],
+                colors2[i]
             ));
         });
 
         // Ring 3 - 6 pieces
-        const ring3Positions = [
+        const colors3 = ['white', 'black', 'white', 'black', 'white', 'black'];
+        const ring3 = [
             { x: 0, y: -spacing * 3 },
             { x: spacing * 2, y: -spacing },
             { x: spacing * 2, y: spacing },
@@ -120,25 +160,28 @@ class CarromGame {
             { x: -spacing * 2, y: spacing },
             { x: -spacing * 2, y: -spacing }
         ];
-        ring3Positions.forEach((pos, i) => {
-            const color = i % 2 === 0 ? 'white' : 'black';
+        ring3.forEach((pos, i) => {
             this.pieces.push(new Piece(
                 center.x + pos.x,
                 center.y + pos.y,
                 radius,
-                color,
-                color
+                colors3[i],
+                colors3[i]
             ));
         });
 
+        // Verify counts
+        const whiteCount = this.pieces.filter(p => p.type === 'white').length;
+        const blackCount = this.pieces.filter(p => p.type === 'black').length;
+        console.log(`Pieces: ${whiteCount} white, ${blackCount} black, 1 queen`);
+
         // Create striker
-        this.striker = new Piece(
-            center.x,
-            this.boardY + this.boardSize - radius * 3,
-            radius * 1.2,
-            '#FFD700',
-            'striker'
-        );
+        const baseY = this.currentPlayer === 'player'
+            ? this.boardY + this.boardSize - radius * 3
+            : this.boardY + radius * 3;
+
+        this.strikerBaselineY = baseY;
+        this.striker = new Piece(center.x, baseY, radius * 1.3, '#FFD700', 'striker');
         this.striker.isStriker = true;
     }
 
@@ -160,14 +203,6 @@ class CarromGame {
         this.canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
             this.handleEnd(e);
-        });
-
-        // Power slider
-        const powerSlider = document.getElementById('power-slider');
-        const powerValue = document.getElementById('power-value');
-        powerSlider.addEventListener('input', (e) => {
-            this.power = parseInt(e.target.value);
-            powerValue.textContent = this.power + '%';
         });
 
         // Buttons
@@ -211,63 +246,151 @@ class CarromGame {
     }
 
     handleStart(e) {
-        if (this.gameState !== 'playing' || this.currentPlayer !== 'player') return;
-        if (!this.allPiecesStopped()) return;
+        if (this.currentPlayer !== 'player') return;
+        if (this.gameState === 'shooting' || this.gameState === 'waiting') return;
 
         const rect = this.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        // Check if clicking on striker
+        // Check if clicking near striker for placement or aiming
         const dx = x - this.striker.x;
         const dy = y - this.striker.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < this.striker.radius * 2) {
-            this.isDragging = true;
-            this.dragStart = { x, y };
+        if (this.isPlacingStriker && distance < this.striker.radius * 3) {
+            this.gameState = 'striker-placement';
+        } else if (!this.isPlacingStriker && this.gameState === 'aiming') {
+            // Start power drag
+            this.isDraggingPower = true;
+            this.powerStartY = y;
+            this.power = 0;
         }
     }
 
     handleMove(e) {
-        if (!this.isDragging) return;
-
         const rect = this.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        this.aimLine = { x, y };
+        if (this.gameState === 'striker-placement') {
+            // Move striker along baseline
+            const minX = this.boardX + this.striker.radius * 2;
+            const maxX = this.boardX + this.boardSize - this.striker.radius * 2;
+            this.striker.x = Math.max(minX, Math.min(maxX, x));
+        } else if (this.gameState === 'aiming' || this.isDraggingPower) {
+            // Update aim angle
+            const dx = x - this.striker.x;
+            const dy = y - this.striker.y;
+            this.aimAngle = Math.atan2(dy, dx);
+
+            // Update power based on drag distance
+            if (this.isDraggingPower) {
+                const dragDistance = Math.abs(y - this.powerStartY);
+                this.power = Math.min(dragDistance / 2, this.maxPower);
+            }
+        }
     }
 
     handleEnd(e) {
-        if (!this.isDragging) return;
-
-        this.isDragging = false;
-
-        const dx = this.dragStart.x - this.striker.x;
-        const dy = this.dragStart.y - this.striker.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance > 5) {
-            const angle = Math.atan2(dy, dx);
-            const forceFactor = Math.min(distance / 100, 1) * (this.power / 50);
-            const force = 15 * forceFactor;
-
-            this.striker.vx = Math.cos(angle) * force;
-            this.striker.vy = Math.sin(angle) * force;
-
-            this.aimLine = { x: 0, y: 0 };
-
-            // Wait for pieces to stop before switching turns
-            setTimeout(() => this.checkTurnEnd(), 100);
+        if (this.gameState === 'striker-placement') {
+            this.gameState = 'aiming';
+            this.isPlacingStriker = false;
+            return;
         }
+
+        if (this.isDraggingPower && this.power > 10) {
+            // Shoot!
+            this.shoot();
+        }
+
+        this.isDraggingPower = false;
+        this.power = 0;
+    }
+
+    shoot() {
+        const force = (this.power / this.maxPower) * 40; // Max force 40
+        this.striker.vx = Math.cos(this.aimAngle) * force;
+        this.striker.vy = Math.sin(this.aimAngle) * force;
+
+        this.gameState = 'shooting';
+        this.validHit = false;
+
+        // Play strike sound
+        this.sounds.strike();
+
+        // Add cue animation particles
+        for (let i = 0; i < 5; i++) {
+            this.particles.push({
+                x: this.striker.x,
+                y: this.striker.y,
+                vx: Math.cos(this.aimAngle) * -2 + (Math.random() - 0.5) * 2,
+                vy: Math.sin(this.aimAngle) * -2 + (Math.random() - 0.5) * 2,
+                life: 1,
+                size: 3
+            });
+        }
+
+        setTimeout(() => this.checkTurnEnd(), 200);
+    }
+
+    computerMove() {
+        if (this.currentPlayer !== 'computer') return;
+
+        this.gameState = 'waiting';
+
+        setTimeout(() => {
+            // AI: Find best shot
+            const computerColor = this.getPlayerColor('computer');
+            const targetPieces = this.pieces.filter(p => !p.pocketed && p.type === computerColor);
+
+            if (targetPieces.length === 0) {
+                const queen = this.pieces.find(p => !p.pocketed && p.type === 'queen');
+                if (queen) targetPieces.push(queen);
+            }
+
+            if (targetPieces.length === 0) {
+                const anyPiece = this.pieces.find(p => !p.pocketed);
+                if (anyPiece) targetPieces.push(anyPiece);
+            }
+
+            if (targetPieces.length > 0) {
+                // Place striker randomly on baseline
+                const minX = this.boardX + this.striker.radius * 2;
+                const maxX = this.boardX + this.boardSize - this.striker.radius * 2;
+                this.striker.x = minX + Math.random() * (maxX - minX);
+
+                // Aim at target with some randomness
+                const target = targetPieces[Math.floor(Math.random() * targetPieces.length)];
+                const dx = target.x - this.striker.x;
+                const dy = target.y - this.striker.y;
+                this.aimAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.3;
+
+                // Shoot with random power
+                const force = 25 + Math.random() * 15;
+                this.striker.vx = Math.cos(this.aimAngle) * force;
+                this.striker.vy = Math.sin(this.aimAngle) * force;
+
+                this.gameState = 'shooting';
+                this.validHit = false;
+                this.sounds.strike();
+
+                setTimeout(() => this.checkTurnEnd(), 200);
+            }
+        }, 1000);
     }
 
     allPiecesStopped() {
         const threshold = 0.1;
-        return this.pieces.every(p => !p.pocketed &&
-            Math.abs(p.vx) < threshold && Math.abs(p.vy) < threshold) &&
-            Math.abs(this.striker.vx) < threshold && Math.abs(this.striker.vy) < threshold;
+        // Check that all non-pocketed pieces have stopped
+        const unpocketedPiecesStopped = this.pieces
+            .filter(p => !p.pocketed)
+            .every(p => Math.abs(p.vx) < threshold && Math.abs(p.vy) < threshold);
+
+        const strikerStopped = this.striker.pocketed ||
+            (Math.abs(this.striker.vx) < threshold && Math.abs(this.striker.vy) < threshold);
+
+        return unpocketedPiecesStopped && strikerStopped;
     }
 
     checkTurnEnd() {
@@ -276,7 +399,6 @@ class CarromGame {
             return;
         }
 
-        // Check for fouls and scoring
         this.processTurn();
     }
 
@@ -285,9 +407,7 @@ class CarromGame {
         this.foul = false;
 
         // Check pocketed pieces
-        const pocketedThisTurn = this.pieces.filter(p =>
-            p.justPocketed && !p.processed
-        );
+        const pocketedThisTurn = this.pieces.filter(p => p.justPocketed && !p.processed);
 
         pocketedThisTurn.forEach(piece => {
             piece.processed = true;
@@ -302,6 +422,7 @@ class CarromGame {
                     this.computerScore += 10;
                 }
                 scored = true;
+                this.validHit = true;
 
                 // Check if queen needs to be covered
                 if (this.queenPocketed && !this.queenCovered[this.currentPlayer]) {
@@ -337,6 +458,7 @@ class CarromGame {
             this.switchTurn();
         } else {
             // Same player continues
+            this.resetForNextShot();
             if (this.currentPlayer === 'computer') {
                 setTimeout(() => this.computerMove(), 1000);
             }
@@ -353,26 +475,34 @@ class CarromGame {
 
         this.currentPlayer = this.currentPlayer === 'player' ? 'computer' : 'player';
         this.updateTurnIndicator();
-
-        this.resetStriker();
+        this.resetForNextShot();
 
         if (this.currentPlayer === 'computer') {
             setTimeout(() => this.computerMove(), 1500);
         }
     }
 
+    resetForNextShot() {
+        this.resetStriker();
+        this.gameState = 'aiming';
+        this.isPlacingStriker = true;
+        this.power = 0;
+        this.aimAngle = this.currentPlayer === 'player' ? -Math.PI / 2 : Math.PI / 2;
+    }
+
     resetStriker() {
         const center = this.canvas.width / 2;
-        const baseY = this.boardY + this.boardSize - this.striker.radius * 3;
+        const radius = this.boardSize * 0.025 * 1.3;
 
         if (this.currentPlayer === 'player') {
-            this.striker.x = center;
-            this.striker.y = baseY;
+            this.strikerBaselineY = this.boardY + this.boardSize - radius * 2.5;
+            this.striker.y = this.strikerBaselineY;
         } else {
-            this.striker.x = center;
-            this.striker.y = this.boardY + this.striker.radius * 3;
+            this.strikerBaselineY = this.boardY + radius * 2.5;
+            this.striker.y = this.strikerBaselineY;
         }
 
+        this.striker.x = center;
         this.striker.vx = 0;
         this.striker.vy = 0;
         this.striker.pocketed = false;
@@ -380,75 +510,6 @@ class CarromGame {
 
     getPlayerColor(player) {
         return player === 'player' ? this.playerColor : this.computerColor;
-    }
-
-    computerMove() {
-        if (this.currentPlayer !== 'computer') return;
-
-        // Simple AI: Find closest piece of computer's color and aim at it
-        const computerColor = this.getPlayerColor('computer');
-        const targetPieces = this.pieces.filter(p =>
-            !p.pocketed && p.type === computerColor
-        );
-
-        if (targetPieces.length === 0) {
-            // Try to hit queen if available
-            const queen = this.pieces.find(p => !p.pocketed && p.type === 'queen');
-            if (queen) {
-                targetPieces.push(queen);
-            }
-        }
-
-        if (targetPieces.length === 0) {
-            // No valid targets, aim at any piece
-            const anyPiece = this.pieces.find(p => !p.pocketed);
-            if (anyPiece) {
-                targetPieces.push(anyPiece);
-            }
-        }
-
-        if (targetPieces.length > 0) {
-            // Find closest pocket
-            const pockets = this.getPockets();
-            let bestShot = null;
-            let bestScore = -Infinity;
-
-            targetPieces.forEach(target => {
-                pockets.forEach(pocket => {
-                    // Calculate angle to shoot target towards pocket
-                    const dx = pocket.x - target.x;
-                    const dy = pocket.y - target.y;
-                    const distToPocket = Math.sqrt(dx * dx + dy * dy);
-
-                    // Angle from striker to target
-                    const strikerToTargetDx = target.x - this.striker.x;
-                    const strikerToTargetDy = target.y - this.striker.y;
-                    const distToTarget = Math.sqrt(
-                        strikerToTargetDx * strikerToTargetDx +
-                        strikerToTargetDy * strikerToTargetDy
-                    );
-
-                    // Score this shot (closer target and pocket = better)
-                    const score = 1000 / distToTarget + 500 / distToPocket;
-
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestShot = {
-                            angle: Math.atan2(strikerToTargetDy, strikerToTargetDx),
-                            power: 0.6 + Math.random() * 0.3
-                        };
-                    }
-                });
-            });
-
-            if (bestShot) {
-                const force = 15 * bestShot.power;
-                this.striker.vx = Math.cos(bestShot.angle) * force;
-                this.striker.vy = Math.sin(bestShot.angle) * force;
-
-                setTimeout(() => this.checkTurnEnd(), 100);
-            }
-        }
     }
 
     getPockets() {
@@ -474,20 +535,15 @@ class CarromGame {
     }
 
     checkGameOver() {
-        const playerPieces = this.pieces.filter(p =>
-            !p.pocketed && p.type === this.playerColor
-        ).length;
-
-        const computerPieces = this.pieces.filter(p =>
-            !p.pocketed && p.type === this.computerColor
-        ).length;
+        const playerPieces = this.pieces.filter(p => !p.pocketed && p.type === this.playerColor).length;
+        const computerPieces = this.pieces.filter(p => !p.pocketed && p.type === this.computerColor).length;
 
         if (playerPieces === 0 || computerPieces === 0) {
             this.gameState = 'gameover';
 
             let winner;
             if (playerPieces === 0) {
-                winner = 'You Win!';
+                winner = 'You Win! 🎉';
             } else {
                 winner = 'Computer Wins!';
             }
@@ -504,24 +560,40 @@ class CarromGame {
     }
 
     resetGame() {
-        this.gameState = 'playing';
+        this.gameState = 'aiming';
         this.currentPlayer = 'player';
         this.playerScore = 0;
         this.computerScore = 0;
         this.queenPocketed = false;
         this.queenCovered = { player: false, computer: false };
         this.foul = false;
+        this.isPlacingStriker = true;
+        this.power = 0;
+        this.aimAngle = -Math.PI / 2;
+        this.particles = [];
+        this.pocketAnimations = [];
 
         this.initializePieces();
         this.updateScore();
         this.updateTurnIndicator();
-
-        document.getElementById('power-slider').value = 50;
-        document.getElementById('power-value').textContent = '50%';
-        this.power = 50;
     }
 
     update() {
+        // Update particles
+        this.particles = this.particles.filter(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.02;
+            return p.life > 0;
+        });
+
+        // Update pocket animations
+        this.pocketAnimations = this.pocketAnimations.filter(a => {
+            a.scale += 0.05;
+            a.opacity -= 0.05;
+            return a.opacity > 0;
+        });
+
         // Update all pieces
         [...this.pieces, this.striker].forEach(piece => {
             if (piece.pocketed) return;
@@ -583,6 +655,18 @@ class CarromGame {
                 piece.justPocketed = true;
                 piece.vx = 0;
                 piece.vy = 0;
+
+                // Play pocket sound
+                this.sounds.pocket();
+
+                // Add pocket animation
+                this.pocketAnimations.push({
+                    x: pocket.x,
+                    y: pocket.y,
+                    scale: 1,
+                    opacity: 1,
+                    color: piece.color
+                });
             }
         });
     }
@@ -632,6 +716,28 @@ class CarromGame {
                     p1.y -= separateY;
                     p2.x += separateX;
                     p2.y += separateY;
+
+                    // Play collision sound
+                    if (Math.abs(vx1) > 1 || Math.abs(vy1) > 1) {
+                        this.sounds.collision();
+                    }
+
+                    // Add collision particles
+                    for (let k = 0; k < 3; k++) {
+                        this.particles.push({
+                            x: (p1.x + p2.x) / 2,
+                            y: (p1.y + p2.y) / 2,
+                            vx: (Math.random() - 0.5) * 3,
+                            vy: (Math.random() - 0.5) * 3,
+                            life: 0.5,
+                            size: 2
+                        });
+                    }
+
+                    // Track if striker hit a piece
+                    if (p1.isStriker || p2.isStriker) {
+                        this.validHit = true;
+                    }
                 }
             }
         }
@@ -660,28 +766,120 @@ class CarromGame {
             this.striker.draw(this.ctx);
         }
 
-        // Draw aim line
-        if (this.isDragging && this.aimLine.x !== 0) {
-            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-            this.ctx.lineWidth = 3;
-            this.ctx.setLineDash([10, 5]);
-            this.ctx.beginPath();
-            this.ctx.moveTo(this.striker.x, this.striker.y);
-
-            const dx = this.striker.x - this.aimLine.x;
-            const dy = this.striker.y - this.aimLine.y;
-            const length = Math.sqrt(dx * dx + dy * dy);
-            const maxLength = 200;
-            const displayLength = Math.min(length, maxLength);
-
-            const angle = Math.atan2(dy, dx);
-            const endX = this.striker.x + Math.cos(angle) * displayLength;
-            const endY = this.striker.y + Math.sin(angle) * displayLength;
-
-            this.ctx.lineTo(endX, endY);
-            this.ctx.stroke();
-            this.ctx.setLineDash([]);
+        // Draw aiming guide (Carrom Pool style)
+        if ((this.gameState === 'aiming' || this.gameState === 'striker-placement') && this.currentPlayer === 'player') {
+            this.drawAimingGuide();
         }
+
+        // Draw power indicator
+        if (this.isDraggingPower) {
+            this.drawPowerIndicator();
+        }
+
+        // Draw particles
+        this.particles.forEach(p => {
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${p.life})`;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+
+        // Draw pocket animations
+        this.pocketAnimations.forEach(a => {
+            this.ctx.strokeStyle = `rgba(255, 215, 0, ${a.opacity})`;
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.arc(a.x, a.y, this.boardSize * 0.04 * a.scale, 0, Math.PI * 2);
+            this.ctx.stroke();
+        });
+
+        // Draw instruction text
+        if (this.currentPlayer === 'player' && this.gameState !== 'shooting' && this.gameState !== 'waiting') {
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            this.ctx.font = `${this.canvas.width * 0.04}px Arial`;
+            this.ctx.textAlign = 'center';
+
+            if (this.isPlacingStriker) {
+                this.ctx.fillText('Drag striker to position', this.canvas.width / 2, this.canvas.height * 0.95);
+            } else {
+                this.ctx.fillText('Drag to aim and shoot', this.canvas.width / 2, this.canvas.height * 0.95);
+            }
+        }
+    }
+
+    drawAimingGuide() {
+        const guideLength = this.boardSize * 0.6;
+
+        // Draw cue stick
+        this.ctx.save();
+        this.ctx.translate(this.striker.x, this.striker.y);
+        this.ctx.rotate(this.aimAngle);
+
+        // Cue stick
+        const cueOffset = this.striker.radius * 2;
+        this.ctx.fillStyle = '#8B4513';
+        this.ctx.fillRect(-cueOffset - guideLength * 0.4, -3, guideLength * 0.4, 6);
+
+        // Cue tip
+        this.ctx.fillStyle = '#4169E1';
+        this.ctx.fillRect(-cueOffset - guideLength * 0.4, -5, 20, 10);
+
+        this.ctx.restore();
+
+        // Draw trajectory line
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([10, 10]);
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.striker.x, this.striker.y);
+
+        const endX = this.striker.x + Math.cos(this.aimAngle) * guideLength;
+        const endY = this.striker.y + Math.sin(this.aimAngle) * guideLength;
+
+        this.ctx.lineTo(endX, endY);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+
+        // Draw aim circle on striker
+        if (this.isPlacingStriker) {
+            this.ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.arc(this.striker.x, this.striker.y, this.striker.radius * 1.5, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+    }
+
+    drawPowerIndicator() {
+        const barWidth = this.canvas.width * 0.1;
+        const barHeight = this.canvas.height * 0.5;
+        const barX = this.canvas.width * 0.05;
+        const barY = this.canvas.height * 0.25;
+
+        // Background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        // Power fill
+        const fillHeight = (this.power / this.maxPower) * barHeight;
+        const gradient = this.ctx.createLinearGradient(barX, barY + barHeight, barX, barY);
+        gradient.addColorStop(0, '#4CAF50');
+        gradient.addColorStop(0.5, '#FFC107');
+        gradient.addColorStop(1, '#F44336');
+
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(barX, barY + barHeight - fillHeight, barWidth, fillHeight);
+
+        // Border
+        this.ctx.strokeStyle = '#fff';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+        // Power text
+        this.ctx.fillStyle = '#fff';
+        this.ctx.font = `${this.canvas.width * 0.04}px Arial`;
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('POWER', barX + barWidth / 2, barY - 10);
     }
 
     drawBoard() {
@@ -702,7 +900,22 @@ class CarromGame {
         );
         this.ctx.stroke();
 
+        // Arrow in center circle pointing up
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        const arrowSize = this.boardSize * 0.08;
+
+        this.ctx.fillStyle = '#8B4513';
+        this.ctx.beginPath();
+        this.ctx.moveTo(centerX, centerY - arrowSize);
+        this.ctx.lineTo(centerX - arrowSize / 2, centerY + arrowSize / 2);
+        this.ctx.lineTo(centerX + arrowSize / 2, centerY + arrowSize / 2);
+        this.ctx.closePath();
+        this.ctx.fill();
+
         // Diagonal lines
+        this.ctx.strokeStyle = '#8B4513';
+        this.ctx.lineWidth = 1;
         this.ctx.beginPath();
         this.ctx.moveTo(this.boardX, this.boardY);
         this.ctx.lineTo(this.boardX + this.boardSize, this.boardY + this.boardSize);
@@ -714,6 +927,29 @@ class CarromGame {
         this.ctx.strokeStyle = '#654321';
         this.ctx.lineWidth = 4;
         this.ctx.strokeRect(this.boardX, this.boardY, this.boardSize, this.boardSize);
+
+        // Baseline indicators
+        const radius = this.boardSize * 0.025 * 1.3;
+        const baselineY1 = this.boardY + this.boardSize - radius * 2.5;
+        const baselineY2 = this.boardY + radius * 2.5;
+
+        this.ctx.strokeStyle = 'rgba(139, 69, 19, 0.3)';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([5, 5]);
+
+        // Player baseline
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.boardX + radius * 2, baselineY1);
+        this.ctx.lineTo(this.boardX + this.boardSize - radius * 2, baselineY1);
+        this.ctx.stroke();
+
+        // Computer baseline
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.boardX + radius * 2, baselineY2);
+        this.ctx.lineTo(this.boardX + this.boardSize - radius * 2, baselineY2);
+        this.ctx.stroke();
+
+        this.ctx.setLineDash([]);
     }
 
     drawPockets() {
@@ -721,14 +957,26 @@ class CarromGame {
         const pocketRadius = this.boardSize * 0.04;
 
         pockets.forEach(pocket => {
+            // Pocket hole
             this.ctx.fillStyle = '#000';
             this.ctx.beginPath();
             this.ctx.arc(pocket.x, pocket.y, pocketRadius, 0, Math.PI * 2);
             this.ctx.fill();
 
+            // Pocket rim
             this.ctx.strokeStyle = '#654321';
-            this.ctx.lineWidth = 2;
+            this.ctx.lineWidth = 3;
             this.ctx.stroke();
+
+            // Inner shadow
+            const gradient = this.ctx.createRadialGradient(
+                pocket.x, pocket.y, 0,
+                pocket.x, pocket.y, pocketRadius
+            );
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            this.ctx.fillStyle = gradient;
+            this.ctx.fill();
         });
     }
 
@@ -782,13 +1030,22 @@ class Piece {
             this.y,
             this.radius
         );
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+        gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)');
         gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
+
+        // Special marking for queen
+        if (this.type === 'queen') {
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 }
 
