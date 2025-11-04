@@ -403,17 +403,24 @@ class CarromGame {
         // Check pocketed pieces
         const pocketedThisTurn = this.pieces.filter(p => p.justPocketed && !p.processed);
 
+        console.log(`Processing turn for ${this.currentPlayer}, pocketed pieces:`, pocketedThisTurn.length);
+
         pocketedThisTurn.forEach(piece => {
             piece.processed = true;
+
+            console.log(`Pocketed piece type: ${piece.type}, current player: ${this.currentPlayer}, player color: ${this.getPlayerColor(this.currentPlayer)}`);
 
             if (piece.type === 'queen') {
                 this.queenPocketed = true;
                 scored = true;
+                console.log('Queen pocketed!');
             } else if (piece.type === this.getPlayerColor(this.currentPlayer)) {
                 if (this.currentPlayer === 'player') {
                     this.playerScore += 10;
+                    console.log(`Player scored! New score: ${this.playerScore}`);
                 } else {
                     this.computerScore += 10;
+                    console.log(`Computer scored! New score: ${this.computerScore}`);
                 }
                 scored = true;
                 this.validHit = true;
@@ -426,20 +433,24 @@ class CarromGame {
                     } else {
                         this.computerScore += 50;
                     }
+                    console.log('Queen covered! Bonus points awarded');
                 }
             } else if (piece.type !== 'queen') {
                 // Pocketed opponent's piece - foul
                 this.foul = true;
+                console.log('Foul! Pocketed opponent piece');
             }
         });
 
         // Check if striker was pocketed - foul
         if (this.striker.pocketed) {
             this.foul = true;
+            console.log('Foul! Striker pocketed');
             this.resetStriker();
         }
 
         // Update UI
+        console.log(`Updating scores - Player: ${this.playerScore}, Computer: ${this.computerScore}`);
         this.updateScore();
 
         // Check for game over
