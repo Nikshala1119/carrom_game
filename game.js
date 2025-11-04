@@ -37,7 +37,7 @@ class CarromGame {
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
         this.aimLine = { x: 0, y: 0 };
-        this.power = 50;
+        this.power = 75;
 
         this.setupEventListeners();
         this.gameLoop();
@@ -251,7 +251,7 @@ class CarromGame {
         if (distance > 5) {
             const angle = Math.atan2(dy, dx);
             const forceFactor = Math.min(distance / 100, 1) * (this.power / 50);
-            const force = 15 * forceFactor;
+            const force = 30 * forceFactor;
 
             this.striker.vx = Math.cos(angle) * force;
             this.striker.vy = Math.sin(angle) * force;
@@ -442,7 +442,7 @@ class CarromGame {
             });
 
             if (bestShot) {
-                const force = 15 * bestShot.power;
+                const force = 30 * bestShot.power;
                 this.striker.vx = Math.cos(bestShot.angle) * force;
                 this.striker.vy = Math.sin(bestShot.angle) * force;
 
@@ -516,9 +516,9 @@ class CarromGame {
         this.updateScore();
         this.updateTurnIndicator();
 
-        document.getElementById('power-slider').value = 50;
-        document.getElementById('power-value').textContent = '50%';
-        this.power = 50;
+        document.getElementById('power-slider').value = 75;
+        document.getElementById('power-value').textContent = '75%';
+        this.power = 75;
     }
 
     update() {
