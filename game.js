@@ -530,8 +530,19 @@ class CarromGame {
     }
 
     updateScore() {
-        document.getElementById('player-score').textContent = this.playerScore;
-        document.getElementById('computer-score').textContent = this.computerScore;
+        const playerScoreEl = document.getElementById('player-score');
+        const computerScoreEl = document.getElementById('computer-score');
+
+        console.log('updateScore called - Elements found:', playerScoreEl !== null, computerScoreEl !== null);
+        console.log('Setting scores to:', this.playerScore, this.computerScore);
+
+        if (playerScoreEl) playerScoreEl.textContent = this.playerScore;
+        if (computerScoreEl) computerScoreEl.textContent = this.computerScore;
+
+        console.log('DOM values after update:',
+            playerScoreEl ? playerScoreEl.textContent : 'null',
+            computerScoreEl ? computerScoreEl.textContent : 'null'
+        );
     }
 
     updateTurnIndicator() {
